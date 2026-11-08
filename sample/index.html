@@ -1,0 +1,58 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;background:#000;overflow:hidden}
+#sub{position:fixed;left:0;right:0;bottom:7%;text-align:center;font:800 34px/1.2 Arial,sans-serif;color:#fff;
+-webkit-text-stroke:1px #000;text-shadow:2px 2px 4px #000,-2px -2px 4px #000}
+</style><script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js"}}</script></head>
+<body><div id="sub"></div><script type="module">
+import * as THREE from 'three';
+const W=540,H=960;
+const r=new THREE.WebGLRenderer({antialias:true});r.setSize(W,H);r.shadowMap.enabled=true;r.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.appendChild(r.domElement);
+const s=new THREE.Scene();s.background=new THREE.Color(0x6ec6f0);s.fog=new THREE.Fog(0x6ec6f0,8,20);
+const cam=new THREE.PerspectiveCamera(36,W/H,.1,50);cam.position.set(.3,1.6,8.5);
+s.add(new THREE.HemisphereLight(0xffffff,0x88aacc,1.1));
+const sun=new THREE.DirectionalLight(0xfff2e0,2.2);sun.position.set(3,5,4);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);s.add(sun);
+const M=(c,rg=.7)=>new THREE.MeshStandardMaterial({color:c,roughness:rg});
+// room
+const wall=new THREE.Mesh(new THREE.PlaneGeometry(12,6),M(0x62c4f2,.9));wall.position.set(0,2,-1.5);wall.receiveShadow=true;s.add(wall);
+const door=new THREE.Mesh(new THREE.BoxGeometry(2.2,3.6,.12),M(0x6b6670));door.position.set(-2,1.8,-1.4);door.receiveShadow=true;s.add(door);
+const pic=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.2),M(0x1a6f95,.3));pic.position.set(-2.2,1.5,-1.32);s.add(pic);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(12,10),M(0x9a6b45,.8));floor.rotation.x=-Math.PI/2;floor.position.z=2;floor.receiveShadow=true;s.add(floor);
+function limb(len,rad,col){const g=new THREE.Group();const m=new THREE.Mesh(new THREE.CapsuleGeometry(rad,len,6,12),M(col));m.position.y=-len/2;m.castShadow=true;g.add(m);return g;}
+function person(o){
+ const p=new THREE.Group();
+ const torso=new THREE.Mesh(new THREE.CapsuleGeometry(o.w,o.t,8,16),M(o.shirt));torso.position.y=o.legL+o.t/2+o.w;torso.castShadow=true;p.add(torso);
+ const head=new THREE.Group();head.position.y=o.legL+o.t+o.w*2+o.h*.9;p.add(head);
+ const skull=new THREE.Mesh(new THREE.SphereGeometry(o.h,32,24),M(0xe8b99a,.55));skull.scale.set(.92,1.05,.95);skull.castShadow=true;head.add(skull);
+ const hair=new THREE.Mesh(new THREE.SphereGeometry(o.h*1.06,32,24,0,Math.PI*2,0,Math.PI*.55),M(0x15110f,.9));hair.position.set(0,.04,-.03);hair.rotation.x=-.25;head.add(hair);
+ if(o.fringe){const f=new THREE.Mesh(new THREE.BoxGeometry(o.h*1.5,o.h*.3,o.h*.4),M(0x15110f,.9));f.position.set(0,o.h*.55,o.h*.78);f.rotation.x=.3;head.add(f);}
+ for(const x of[-1,1]){const e=new THREE.Mesh(new THREE.SphereGeometry(o.h*.12,16,12),M(0xffffff,.2));e.position.set(x*o.h*.34,o.h*.1,o.h*.82);head.add(e);
+  const pu=new THREE.Mesh(new THREE.SphereGeometry(o.h*.06,12,10),M(0x5a4a2a,.2));pu.position.set(x*o.h*.34,o.h*.1,o.h*.93);head.add(pu);}
+ const mouth=new THREE.Mesh(new THREE.SphereGeometry(o.h*.13,16,12),M(0x5a1e1e));mouth.scale.set(1.4,.4,.5);mouth.position.set(0,-o.h*.4,o.h*.86);head.add(mouth);
+ const arms=[-1,1].map(x=>{const a=limb(o.armL,o.w*.3,o.shirt);a.position.set(x*(o.w+.04),o.legL+o.t+o.w*.8,0);p.add(a);return a;});
+ const legs=[-1,1].map(x=>{const l=limb(o.legL,o.w*.38,o.pants);l.position.set(x*o.w*.5,o.legL,0);p.add(l);return l;});
+ p.userData={head,mouth,arms,legs,torso};return p;}
+const boy=person({w:.28,t:.5,h:.3,legL:.7,armL:.55,shirt:0x6f86b8,pants:0x7a7556,fringe:true});boy.position.set(-.6,0,.8);boy.rotation.y=.35;s.add(boy);
+const mom=person({w:.4,t:.75,h:.36,legL:.9,armL:.75,shirt:0xe9e2d6,pants:0x555555});mom.position.set(.9,0,1.5);mom.rotation.y=-2.4;mom.scale.setScalar(1.05);s.add(mom);
+mom.userData.head.rotation.y=0;
+const lines=[[0,2.5,"Mom, I'm not a kid anymore."],[2.5,5,"I'm a student now."],[5,7.5,"Of course you are, sweetheart."],[7.5,10,"Now go finish your homework."]];
+const sub=document.getElementById('sub');
+window.render=(t)=>{
+ const L=lines.find(l=>t>=l[0]&&t<l[1]);sub.textContent=L?L[2]:'';
+ const talkB=L&&(L[0]<5), talkM=L&&!talkB;
+ const bu=boy.userData,mu=mom.userData;
+ bu.mouth.scale.y=talkB?.3+.6*Math.abs(Math.sin(t*14)):.2;
+ mu.mouth.scale.y=talkM?.3+.6*Math.abs(Math.sin(t*13)):.2;
+ bu.head.rotation.set(talkB?.05*Math.sin(t*3):0,.2*Math.sin(t*1.5),.06*Math.sin(t*2));
+ bu.arms[0].rotation.z=-.9;bu.arms[1].rotation.z=.9; // hands on hips
+ bu.arms[0].rotation.x=0;bu.arms[1].rotation.x=0;
+ bu.arms[0].position.x=-.32;bu.arms[1].position.x=.32;
+ bu.arms[1].rotation.z=talkB?.9+.5*Math.sin(t*4):.9;
+ boy.position.y=.02*Math.sin(t*3);
+ mu.arms[1].rotation.x=-1.3;mu.arms[1].rotation.z=-.3+(t>4.5?.15*Math.sin(t*3):0); // hand on boy's shoulder
+ mu.head.rotation.y=talkM?.1*Math.sin(t*2.5):0;
+ mom.position.y=.015*Math.sin(t*2.5);
+ cam.position.x=.3+.15*Math.sin(t*.4);cam.position.y=1.5+.05*Math.sin(t*.6);cam.lookAt(.2,1.15,1);
+ r.render(s,cam);};
+window.render(0);window.ready=true;
+</script></body></html>
